@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/usr/src/app
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DB_USER=${DB_USER}
