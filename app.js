@@ -42,6 +42,9 @@ const pool = mysql.createPool({
 
 let isProcessing = false; // Lock állapot követése
 
+// Get refresh time from .env
+const refreshInterval = parseInt(process.env.APP_REFRESH, 10) || 5000; // Alapértelmezett érték: 5000 ms
+
 // 2 másodpercenként ellenőrizzük a feldolgozatlan rekordokat
 setInterval(async () => {
     if (isProcessing) {
@@ -80,4 +83,4 @@ setInterval(async () => {
     } finally {
         isProcessing = false; // Lock feloldása
     }
-}, 5000);
+}, refreshInterval);
