@@ -1,10 +1,10 @@
-const mysql = require('mysql2/promise'); // Promise alapú MySQL kapcsolat
+const mysql = require('mysql2/promise'); // Promise-based MySQL connection
 const axios = require('axios');
 const winston = require('winston');
 require('winston-daily-rotate-file');
-require('dotenv').config(); // .env fájl beolvasása
+require('dotenv').config(); // Reading .env file
 
-// Winston logger konfiguráció log rotációval
+// Winston logger configuration with log rotation
 const logger = winston.createLogger({
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
     format: winston.format.combine(
@@ -16,7 +16,7 @@ const logger = winston.createLogger({
     transports: [
         new winston.transports.Console(),
         new winston.transports.DailyRotateFile({
-            filename: 'logs/app-%DATE%.log', // Log fájl forgatása dátummal
+            filename: 'logs/app-%DATE%.log', // Rotate log file with date
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '14d',
@@ -25,7 +25,7 @@ const logger = winston.createLogger({
     ]
 });
 
-// Alkalmazás indítás log üzenet
+// Application startup log message
 logger.info('Application started successfully. Environment: ' + process.env.NODE_ENV);
 
 // MySQL kapcsolat pool létrehozása
@@ -40,22 +40,22 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-let isProcessing = false; // Lock állapot követése
+let isProcessing = false; // Track lock status
 
 // Get refresh time from .env
-const refreshInterval = parseInt(process.env.APP_REFRESH, 10) || 5000; // Alapértelmezett érték: 5000 ms
+const refreshInterval = parseInt(process.env.APP_REFRESH, 10) || 5000; // Default value: 5000 ms
 
-// 2 másodpercenként ellenőrizzük a feldolgozatlan rekordokat
+// Check for unprocessed records every 5 seconds
 setInterval(async () => {
     if (isProcessing) {
-        logger.debug('Folyamatban lévő kérés van, újabb nem indul.');
+        logger.debug('There is a pending request, no new one will be started.');
         return;
     }
 
     try {
         isProcessing = true;
 
-        // Kapcsolat pool használata lekérdezéshez
+        // Use connection pool for query
         const [results] = await pool.execute(
             'SELECT COUNT(*) AS count FROM message_tbl WHERE processed_push = 0'
         );
@@ -63,24 +63,24 @@ setInterval(async () => {
         const hasNewMessages = results[0].count > 0;
 
         if (hasNewMessages) {
-            logger.info('Van új feldolgozandó rekord! PHP meghívása...');
+            logger.info('There is a new record to process! Calling PHP...');
 
-            // Axios kérés timeout-tal (2000 ms) és .env-ből vett URL-lel
+            // Axios request with timeout (5000 ms) and URL taken from .env
             const response = await axios.post(process.env.PHP_ENDPOINT, {}, {
-                timeout: 2000 // Timeout beállítása 2 másodpercre
+                timeout: 2000 // Set timeout to 2 seconds
             });
 
-            logger.info(`PHP válasz: ${response.data}`);
+            logger.info(`PHP response: ${response.data}`);
         } else {
-            logger.debug('Nincs új feldolgozandó rekord.');
+            logger.debug('There are no new records to process.');
         }
     } catch (err) {
         if (err.code === 'ECONNABORTED') {
-            logger.warn('PHP kérés timeout: A válaszidő túllépte a 2 másodpercet.');
+            logger.warn('PHP request timeout: Response time exceeded 2 seconds.');
         } else {
-            logger.error(`Hiba történt: ${err.message}`);
+            logger.error(`An error occurred: ${err.message}`);
         }
     } finally {
-        isProcessing = false; // Lock feloldása
+        isProcessing = false; // Unlock lock
     }
 }, refreshInterval);

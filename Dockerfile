@@ -1,21 +1,21 @@
 # Node.js alap image
 FROM node:18
 
-# Munkakönyvtár létrehozása
+# Create a working directory
 WORKDIR /usr/src/app
 
-# Függőségek telepítése
+# Install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Projekt fájlok másolása
+# Copy project files
 COPY . .
 
-# Környezeti változók
+# Environment variables
 COPY .env .env
 
-# Port nyitása
+# Open port
 EXPOSE 3000
 
-# Alkalmazás indítása
+# Launch application
 CMD ["node", "app.js"]
